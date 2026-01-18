@@ -9,13 +9,13 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (JSX変換用) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Lucide Icons (Vanilla JS版を使用し、Reactでラップする方式に変更) -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
@@ -24,6 +24,8 @@
         * { -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
         /* 入力フォームのみ選択可能にする */
         input, select { user-select: auto; -webkit-user-select: auto; }
+        /* iPhoneでのボタンのタップ領域確保とカーソルポインター */
+        button { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -33,19 +35,9 @@
         const { useState, useEffect, useMemo, createElement } = React;
 
         // --- Lucide Icons Wrapper ---
-        // LucideアイコンをReactコンポーネントとして使えるようにするヘルパー関数
         const LucideIcon = ({ name, size = 24, className, ...props }) => {
             const iconData = window.lucide && window.lucide.icons ? window.lucide.icons[name] : null;
-            
-            if (!iconData) {
-                console.warn(`Icon ${name} not found`);
-                return null;
-            }
-
-            // iconData is [tag, attrs, children] in older versions or just array of children in newer.
-            // Checking structure of lucide.icons in latest unpkg version.
-            // Usually it's an array of [elementName, attrs]
-            
+            if (!iconData) return null;
             return (
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -67,7 +59,6 @@
             );
         };
 
-        // アプリで使用するアイコンを定義
         const Trophy = (props) => <LucideIcon name="Trophy" {...props} />;
         const Settings = (props) => <LucideIcon name="Settings" {...props} />;
         const Activity = (props) => <LucideIcon name="Activity" {...props} />;
@@ -93,7 +84,6 @@
 
         // --- Constants & Types ---
         const POINTS = ['0', '15', '30', '40', 'Ad'];
-        // 初期設定URL
         const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwWuqbncAqt5LilJJ9A50Xz7HUmzV4gxnwQf4TwiOvhRHIm5uIaGpdaejI5dnf_vCse/exec"; 
 
         // 初期選手データ
@@ -111,7 +101,7 @@
 
         // --- Helper Components ---
         const Button = ({ onClick, children, className = "", variant = "primary", disabled = false, size = "md" }) => {
-            const baseStyle = "font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center select-none";
+            const baseStyle = "font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center select-none cursor-pointer";
             const variants = {
                 primary: "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800",
                 secondary: "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 active:bg-gray-100",
@@ -407,6 +397,7 @@
                     }
 
                     if (!state.winner) {
+                        // ... (Score Logic same as before) ...
                         if (state.isTiebreak) {
                             if (winnerSide === 'A') state.pointsA++; else state.pointsB++;
                             if ((state.pointsA >= 7 || state.pointsB >= 7) && Math.abs(state.pointsA - state.pointsB) >= 2) {
@@ -482,7 +473,8 @@
             if (screen === 'setup') {
                 return (
                     <div className="min-h-screen p-4 flex items-center justify-center max-w-md mx-auto bg-[#f0fdf4] select-none relative">
-                        <button onClick={() => setShowSettingsModal(true)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow text-gray-500 hover:text-blue-600 z-10"><Settings size={20} /></button>
+                        {/* 画面右上の設定ボタン（z-indexを50に設定） */}
+                        <button onClick={() => setShowSettingsModal(true)} className="absolute top-4 right-4 p-2 bg-white rounded-full shadow text-gray-500 hover:text-blue-600 z-50 cursor-pointer"><Settings size={20} /></button>
                         <Card className="w-full p-6">
                             <div className="flex items-center gap-2 mb-6 text-blue-800"><Trophy className="w-6 h-6" /><h1 className="text-2xl font-bold">試合設定</h1></div>
                             <div className="space-y-4">
@@ -507,8 +499,9 @@
 
             return (
                 <div className="max-w-md mx-auto min-h-screen flex flex-col bg-slate-50 relative select-none">
-                    <div className="bg-slate-900 text-white p-4 pb-6 rounded-b-3xl shadow-lg sticky top-0 z-10 shrink-0">
-                        <div className="flex justify-between items-center mb-4 opacity-70 text-sm"><span>{matchInfo.matchName}</span><div className="flex gap-2 items-center"><button onClick={() => setShowSettingsModal(true)} className="p-1 hover:text-blue-300"><Settings size={20} /></button><button onClick={() => setScreen(screen === 'match' ? 'stats' : 'match')} className="p-1 hover:text-blue-300">{screen === 'match' ? <Activity size={20}/> : <Zap size={20}/>}</button>{screen === 'match' && (<><button onClick={() => setShowGasModal(true)} className="p-1 hover:text-blue-300"><CloudUpload size={20} /></button><button onClick={() => setShowHistory(!showHistory)} className={`p-1 hover:text-blue-300 ${showHistory ? 'text-blue-400' : ''}`}><Menu size={20} /></button></>)}<button onClick={exportCSV} className="p-1 hover:text-green-300"><Save size={20}/></button></div></div>
+                    {/* Header (z-indexを50に設定) */}
+                    <div className="bg-slate-900 text-white p-4 pb-6 rounded-b-3xl shadow-lg sticky top-0 z-50 shrink-0">
+                        <div className="flex justify-between items-center mb-4 opacity-70 text-sm"><span>{matchInfo.matchName}</span><div className="flex gap-2 items-center"><button onClick={() => setShowSettingsModal(true)} className="p-1 hover:text-blue-300 cursor-pointer"><Settings size={20} /></button><button onClick={() => setScreen(screen === 'match' ? 'stats' : 'match')} className="p-1 hover:text-blue-300 cursor-pointer">{screen === 'match' ? <Activity size={20}/> : <Zap size={20}/>}</button>{screen === 'match' && (<><button onClick={() => setShowGasModal(true)} className="p-1 hover:text-blue-300 cursor-pointer"><CloudUpload size={20} /></button><button onClick={() => setShowHistory(!showHistory)} className={`p-1 hover:text-blue-300 ${showHistory ? 'text-blue-400' : ''} cursor-pointer`}><Menu size={20} /></button></>)}<button onClick={exportCSV} className="p-1 hover:text-green-300 cursor-pointer"><Save size={20}/></button></div></div>
                         <div className="flex justify-between items-center text-center">
                             <div className={`flex-1 transition-all ${currentScore.currentServerSide === 'A' ? 'scale-105' : 'opacity-80'}`}>
                                 <div className="text-xs mb-1 text-slate-400">Pair A</div><div className="font-bold text-lg leading-tight"><div>{matchInfo.playerA1}</div>{matchInfo.isDoubles && <div className="text-sm">{matchInfo.playerA2}</div>}</div>
