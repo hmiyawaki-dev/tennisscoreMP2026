@@ -62,7 +62,7 @@
 
         // --- Constants ---
         const POINTS = ['0', '15', '30', '40', 'Ad'];
-        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbzGVV5XjhmbJBialJy5f--xm0VVuDBGahgtf1ZPW5rX_V1kPafKPBL1WRnz8i42y4gS/exec"; 
+        const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbwWuqbncAqt5LilJJ9A50Xz7HUmzV4gxnwQf4TwiOvhRHIm5uIaGpdaejI5dnf_vCse/exec"; 
 
         const DEFAULT_PLAYER_LIST = {
             "神戸野田 男": ["川口 暖斗", "河野 晃太", "菊川 雄介", "玉田 一将", "舩岡 恵大", "小林 純平", "高橋 史生", "飯田 隼生", "小橋 悠人", "谷澤 拓真", "春田 陽向", "藤谷 柊司", "三木 望夢", "村山 蒼"],
@@ -367,7 +367,6 @@
                     }
 
                     if (!state.winner) {
-                        // ... (Score Logic same as before) ...
                         if (state.isTiebreak) {
                             if (winnerSide === 'A') state.pointsA++; else state.pointsB++;
                             if ((state.pointsA >= 7 || state.pointsB >= 7) && Math.abs(state.pointsA - state.pointsB) >= 2) {
@@ -422,47 +421,48 @@
             const displayPointB = currentScore.isTiebreak ? currentScore.pointsB : (isDeuce ? "Deuce" : (currentScore.pointsB > 3 && currentScore.pointsA > 3 ? (currentScore.pointsB > currentScore.pointsA ? "Ad" : "40") : (POINTS[Math.min(currentScore.pointsB, 4)] || currentScore.pointsB)));
             const currentServerStats = (() => { if (!matchStats.stats[currentServerPlayer]) return { r1: 0, rT: 0 }; const s = matchStats.stats[currentServerPlayer]; const r1 = s.serves1st === 0 ? 0 : Math.round((s.firstIn / s.serves1st) * 100); const tIn = s.serves - s.faults - s.doubleFaults; const rT = s.serves === 0 ? 0 : Math.round((tIn / s.serves) * 100); return { r1, rT }; })();
 
-            // --- Updated CSV Generation ---
+            // --- Updated CSV Generation Function based on PDF requirements ---
             const generateCSV = () => {
+                // BOM for Excel compatibility
                 let csvContent = "\uFEFF"; 
                 
-                // 1. Summary
-                csvContent += `Match,${matchInfo.matchName}\n`;
-                const dateStr = new Date().toLocaleDateString();
-                csvContent += `Date,${dateStr}\n`;
-                csvContent += `Format,${matchInfo.isDoubles ? 'Doubles' : 'Singles'},${matchInfo.matchType}\n`;
+                // 1. Match Summary & Player Stats
+                csvContent += `Match Name,${matchInfo.matchName},,,,Date,${new Date().toLocaleDateString()}\n`;
+                csvContent += `Format,${matchInfo.isDoubles ? 'Doubles' : 'Singles'},${matchInfo.matchType},,,Final Score,${currentScore.setsA}-${currentScore.setsB} (${currentScore.gamesA}-${currentScore.gamesB})\n`;
                 const teamA = matchInfo.isDoubles ? `${matchInfo.playerA1} & ${matchInfo.playerA2}` : matchInfo.playerA1;
                 const teamB = matchInfo.isDoubles ? `${matchInfo.playerB1} & ${matchInfo.playerB2}` : matchInfo.playerB1;
-                csvContent += `Team A,${teamA}\n`;
-                csvContent += `Team B,${teamB}\n`;
-                csvContent += `Final Score,${currentScore.setsA}-${currentScore.setsB} (${currentScore.gamesA}-${currentScore.gamesB})\n`;
-                csvContent += `Winner,${currentScore.winner === 'A' ? 'Team A' : (currentScore.winner === 'B' ? 'Team B' : '-')}\n\n`;
+                const winnerName = currentScore.winner === 'A' ? teamA : (currentScore.winner === 'B' ? teamB : '-');
+                csvContent += `Team A,${teamA},,,Winner,${winnerName}\n`;
+                csvContent += `Team B,${teamB}\n\n`;
 
-                // 2. Stats
                 csvContent += "Player Stats,Serves,1st In,1st %,2nd In,2nd %,DF,Aces,Points Won\n";
                 const players = ['A1', 'A2', 'B1', 'B2'];
                 players.forEach(pKey => {
                     const pName = pKey === 'A1' ? matchInfo.playerA1 : pKey === 'A2' ? matchInfo.playerA2 : pKey === 'B1' ? matchInfo.playerB1 : matchInfo.playerB2;
                     if (!pName || (!matchInfo.isDoubles && (pKey === 'A2' || pKey === 'B2'))) return;
                     const s = matchStats.stats[pKey];
+                    
                     const rate1st = s.serves1st === 0 ? "0%" : Math.round((s.firstIn / s.serves1st) * 100) + "%";
                     const totalIn = s.serves - s.faults - s.doubleFaults;
                     const rateTotal = s.serves === 0 ? "0%" : Math.round((totalIn / s.serves) * 100) + "%";
                     const secondIn = totalIn - s.firstIn;
-                    const secondAttempts = s.faults;
+                    const secondAttempts = s.faults; // Approx: faults = failed 1st serves = 2nd serve attempts (ignoring lets/interruptions logic for now)
+                    // Note: 'faults' in our logic counts 1st serve faults. 
+                    // 2nd serve rate = 2nd In / 2nd Attempts
                     const secondRate = secondAttempts > 0 ? Math.round((secondIn / secondAttempts) * 100) + "%" : "-";
                     
                     csvContent += `${pName},${s.serves},${s.firstIn},${rate1st},${secondIn},${secondRate},${s.doubleFaults},${s.aces},${s.totalPoints}\n`;
                 });
                 csvContent += "\n";
 
-                // 3. Logs
-                csvContent += "No.,Game,Server,Side,Fault,Result,Winner,Server P,Receiver P,Game Count,Note\n";
+                // 2. Detailed Log Header
+                csvContent += "No.,Game,サーバー,サイド,Fault,内容,ポイント勝者,サーバーP,レシーバーP,ゲームカウント,備考\n";
+                
                 let seq = 1;
                 const fmtPt = (pt, isTB) => isTB ? pt : (pt > 3 ? "Ad" : POINTS[pt]);
 
                 timeline.forEach((t, index) => {
-                    const s = t.scoreSnapshot;
+                    const s = t.scoreSnapshot; // State at start of point
                     const gameNum = s.gamesA + s.gamesB + 1;
                     
                     let serverName = "";
@@ -472,24 +472,25 @@
                     else if (t.serverPlayer === 'B2') serverName = matchInfo.playerB2;
 
                     const totalPoints = s.pointsA + s.pointsB;
-                    let sideStr = s.isTiebreak ? "" : (totalPoints % 2 === 0 ? "Deuce" : "Ad");
+                    let sideStr = s.isTiebreak ? "TB" : (totalPoints % 2 === 0 ? "フォア" : "バック");
                     
-                    const faultStr = t.type === 'FAULT' ? "Fault" : "";
+                    const faultStr = t.type === 'FAULT' ? "Fault" : (t.isSecondServe ? "2nd" : "1st");
                     
                     let contentStr = t.type;
-                    if (t.type === 'ACE') contentStr = "Ace";
-                    else if (t.type === 'DOUBLE_FAULT') contentStr = "Double Fault";
-                    else if (t.type === 'RETURN_MISS') contentStr = "Return Miss";
-                    else if (t.type === 'WINNER') contentStr = "Winner";
-                    else if (t.type === 'ERROR') contentStr = "Error";
-                    else if (t.type === 'RALLY') contentStr = "Rally";
+                    if (t.type === 'ACE') contentStr = "エース";
+                    else if (t.type === 'DOUBLE_FAULT') contentStr = "ダブルフォルト";
+                    else if (t.type === 'RETURN_MISS') contentStr = "リターンミス";
+                    else if (t.type === 'WINNER') contentStr = "ウィナー";
+                    else if (t.type === 'ERROR') contentStr = "サーバーミス";
+                    else if (t.type === 'RALLY') contentStr = "ラリー";
                     
                     let winnerRole = "";
                     if (t.type !== 'FAULT') {
-                        if (t.winner === t.calculatedServerSide) winnerRole = "Server";
-                        else winnerRole = "Receiver";
+                        if (t.winner === t.calculatedServerSide) winnerRole = "サーバー";
+                        else winnerRole = "レシーバー";
                     }
 
+                    // Score Display (After Point)
                     let nextPointsA = s.pointsA;
                     let nextPointsB = s.pointsB;
                     if (t.type !== 'FAULT') {
@@ -498,7 +499,6 @@
                     
                     let serverP = "";
                     let receiverP = "";
-                    
                     if (t.calculatedServerSide === 'A') {
                         if (!s.isTiebreak && nextPointsA >= 3 && nextPointsB >= 3) {
                              if (nextPointsA === nextPointsB) { serverP = "Deuce"; receiverP = "Deuce"; }
@@ -521,7 +521,6 @@
                     if (t.type === 'FAULT') { serverP = ""; receiverP = ""; }
 
                     const gameCountStr = `${s.gamesA}-${s.gamesB}`;
-                    
                     let note = "";
                     const nextH = timeline[index + 1];
                     if (nextH) {
