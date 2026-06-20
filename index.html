@@ -510,9 +510,15 @@
                             let gameFinished = false;
 
                             if (hasAd) { 
-                                if (matchInfo.noAd && state.pointsA === 4 && state.pointsB === 4) {} 
-                                if (state.pointsA > state.pointsB + 1) { state.gamesA++; gameFinished = true; } 
-                                else if (state.pointsB > state.pointsA + 1) { state.gamesB++; gameFinished = true; } 
+                                if (matchInfo.noAd) {
+                                    // ノーアド時は、40-40（3-3）からどちらかが4ポイントに達した時点で即座にゲーム終了
+                                    if (state.pointsA > 3) { state.gamesA++; gameFinished = true; }
+                                    else if (state.pointsB > 3) { state.gamesB++; gameFinished = true; }
+                                } else {
+                                    // 通常ルールは従来通り2ポイント差がつくまで継続
+                                    if (state.pointsA > state.pointsB + 1) { state.gamesA++; gameFinished = true; } 
+                                    else if (state.pointsB > state.pointsA + 1) { state.gamesB++; gameFinished = true; } 
+                                }
                             } else { 
                                 if (state.pointsA > 3) { state.gamesA++; gameFinished = true; } 
                                 else if (state.pointsB > 3) { state.gamesB++; gameFinished = true; } 
