@@ -501,8 +501,8 @@
                                 if (state.gamesA > state.gamesB) state.setsA++; else state.setsB++;
                                 pushGameStats(eventServerPlayer); 
                                 
-                                state.pointsA = 0; state.pointsB = 0; state.isTiebreak = false; state.gamesA = 0; state.gamesB = 0; 
-                                if (state.setsA >= matchInfo.setsToWin) state.winner = 'A'; else if (state.setsB >= matchInfo.setsToWin) state.winner = 'B'; else state.gameServerSide = (state.gameServerSide === 'A' ? 'B' : 'A');
+                                state.pointsA = 0; state.pointsB = 0; state.isTiebreak = false; 
+                                if (state.setsA >= matchInfo.setsToWin) state.winner = 'A'; else if (state.setsB >= matchInfo.setsToWin) state.winner = 'B'; else { state.gamesA = 0; state.gamesB = 0; state.gameServerSide = (state.gameServerSide === 'A' ? 'B' : 'A'); }
                             }
                         } else {
                             if (winnerSide === 'A') state.pointsA++; else state.pointsB++;
